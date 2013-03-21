@@ -28,7 +28,6 @@ package de.mattesgroeger.parsley.modules.loading
 	import org.flexunit.asserts.assertNull;
 	import org.flexunit.async.Async;
 	import org.spicefactory.lib.task.events.TaskEvent;
-	import org.spicefactory.parsley.core.messaging.MessageProcessor;
 
 	import flash.events.ErrorEvent;
 
@@ -39,23 +38,21 @@ package de.mattesgroeger.parsley.modules.loading
 		{
 			var moduleId:String = "test";
 			var moduleUrl:String = "DemoModule.swf";
-			var processor:MessageProcessor = new MockMessageProcessor();
 
-			var task:DefaultModuleLoaderTask = new DefaultModuleLoaderTask(moduleId, moduleUrl, processor);
+			var task:DefaultModuleLoaderTask = new DefaultModuleLoaderTask(moduleId, moduleUrl);
 
 			assertEquals(moduleId, task.moduleId);
-			assertEquals(processor, task.processor);
 			assertNull(task.module);
 		}
 
 		[Test(async)]
 		public function module_loading():void
 		{
-			var moduleLoadingTask:ModuleLoaderTask = new DefaultModuleLoaderTask(ModuleIds.DEMO_MODULE_ID, "DemoModule.swf", null);
+			var moduleLoadingTask:ModuleLoaderTask = new DefaultModuleLoaderTask(ModuleIds.DEMO_MODULE_ID, "DemoModule.swf");
 			moduleLoadingTask.addEventListener(TaskEvent.COMPLETE, Async.asyncHandler(this, handleModuleLoaded, 1000));
 		}
 
-		private function handleModuleLoaded(event:TaskEvent, passThroughData:Object):void
+		private function handleModuleLoaded(event:TaskEvent, ...args):void
 		{
 			var task:ModuleLoaderTask = ModuleLoaderTask(event.target);
 
@@ -66,34 +63,16 @@ package de.mattesgroeger.parsley.modules.loading
 		[Test(async)]
 		public function module_loading_fails():void
 		{
-			var moduleLoadingTask:ModuleLoaderTask = new DefaultModuleLoaderTask(ModuleIds.NO_MODULE_ID, "NoModule.swf", null);
+			var moduleLoadingTask:ModuleLoaderTask = new DefaultModuleLoaderTask(ModuleIds.NO_MODULE_ID, "NoModule.swf");
 			moduleLoadingTask.addEventListener(ErrorEvent.ERROR, Async.asyncHandler(this, handleModuleLoadedError, 1000));
 		}
 
-		private function handleModuleLoadedError(event:ErrorEvent, passThroughData:Object):void
+		private function handleModuleLoadedError(event:ErrorEvent, ...args):void
 		{
 			var task:ModuleLoaderTask = ModuleLoaderTask(event.target);
 
 			assertEquals(ModuleIds.NO_MODULE_ID, task.moduleId);
 			assertNull(task.module);
 		}
-	}
-}
-
-import org.spicefactory.parsley.core.messaging.MessageProcessor;
-
-class MockMessageProcessor implements MessageProcessor
-{
-	public function rewind():void
-	{
-	}
-
-	public function proceed():void
-	{
-	}
-
-	public function get message():Object
-	{
-		return null;
 	}
 }
