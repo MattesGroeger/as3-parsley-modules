@@ -21,6 +21,7 @@
  */
 package de.mattesgroeger.parsley.modules.loading
 {
+	import org.flexunit.asserts.assertEquals;
 	import de.mattesgroeger.parsley.modules.config.ModuleConfig;
 	import de.mattesgroeger.parsley.modules.loading.support.ModuleIds;
 
@@ -32,7 +33,8 @@ package de.mattesgroeger.parsley.modules.loading
 	public class DefaultModuleLoaderTest
 	{
 		private var moduleConfig:ModuleConfig;
-		private var moduleLoader:DefaultModuleLoader;
+		private var moduleLoader : DefaultModuleLoader;
+		private var messageProcessor : MockMessageProcessor;
 
 		[Before]
 		public function tearUp():void
@@ -43,6 +45,8 @@ package de.mattesgroeger.parsley.modules.loading
 
 			moduleLoader = new DefaultModuleLoader();
 			moduleLoader.moduleConfig = moduleConfig;
+			
+			messageProcessor = new MockMessageProcessor();
 		}
 
 		[After]
@@ -50,6 +54,7 @@ package de.mattesgroeger.parsley.modules.loading
 		{
 			moduleConfig = null;
 			moduleLoader = null;
+			messageProcessor = null;
 		}
 
 		[Test]
@@ -77,11 +82,62 @@ package de.mattesgroeger.parsley.modules.loading
 			moduleLoadingTask.addEventListener(TaskEvent.COMPLETE, Async.asyncHandler(this, handleModuleLoaded, 1000));
 		}
 
-		private function handleModuleLoaded(event:TaskEvent, passThroughData:Object):void
+		private function handleModuleLoaded(event:TaskEvent, ...args):void
 		{
 			var task:ModuleLoaderTask = ModuleLoaderTask(event.target);
 			
 			assertTrue(moduleLoader.isModuleLoaded(task.moduleId));
 		}
+		
+		[Test(async)]
+		public function module_load_called_while_loading_already():void
+		{
+			var moduleLoadingTask:ModuleLoaderTask = moduleLoader.loadModule(ModuleIds.DEMO_MODULE_ID);
+			moduleLoader.loadModule(ModuleIds.DEMO_MODULE_ID, messageProcessor);
+			moduleLoadingTask.addEventListener(TaskEvent.COMPLETE, Async.asyncHandler(this, handleModuleLoadedAfterTwoRequests, 1000));
+		}
+
+		private function handleModuleLoadedAfterTwoRequests(event:TaskEvent, ...args):void
+		{
+			var task:ModuleLoaderTask = ModuleLoaderTask(event.target);
+			
+			assertTrue(moduleLoader.isModuleLoaded(task.moduleId));
+			assertEquals( "unexpected call count for rewind of message processor", 1, messageProcessor.rewindCallCount);
+			assertEquals( "unexpected call count for proceed of message processor", 1, messageProcessor.proceedCallCount);
+		}
+	}
+}
+
+import org.spicefactory.parsley.core.messaging.MessageProcessor;
+ 
+class MockMessageProcessor implements MessageProcessor
+{
+	private var _rewindCallCount:uint = 0;
+	private var _proceedCallCount:uint = 0;
+	
+ 
+	public function get message():Object
+	{
+		return null;
+	}
+
+	public function get rewindCallCount() : uint
+	{
+		return _rewindCallCount;
+	}
+
+	public function get proceedCallCount() : uint
+	{
+		return _proceedCallCount;
+	}
+
+	public function rewind():void
+	{
+		_rewindCallCount++;
+	}
+ 
+	public function proceed():void
+	{
+		_proceedCallCount++;
 	}
 }

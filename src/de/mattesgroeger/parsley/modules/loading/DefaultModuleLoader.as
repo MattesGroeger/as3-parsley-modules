@@ -21,15 +21,16 @@
  */
 package de.mattesgroeger.parsley.modules.loading
 {
-	import flash.events.ErrorEvent;
 	import de.mattesgroeger.parsley.modules.Module;
 	import de.mattesgroeger.parsley.modules.config.ModuleConfig;
 
 	import org.spicefactory.lib.task.SequentialTaskGroup;
+	import org.spicefactory.lib.task.Task;
 	import org.spicefactory.lib.task.events.TaskEvent;
 	import org.spicefactory.parsley.core.context.Context;
 	import org.spicefactory.parsley.core.messaging.MessageProcessor;
 
+	import flash.events.ErrorEvent;
 	import flash.system.ApplicationDomain;
 	import flash.system.LoaderContext;
 	import flash.utils.Dictionary;
@@ -44,6 +45,7 @@ package de.mattesgroeger.parsley.modules.loading
 		
 		private var loaderContext:LoaderContext;
 		private var loadedModules:Dictionary = new Dictionary();
+		private var processorsForLoadingModules:Dictionary = new Dictionary();
 		private var loadingGroup:SequentialTaskGroup;
 
 		public function DefaultModuleLoader()
@@ -56,51 +58,74 @@ package de.mattesgroeger.parsley.modules.loading
 			
 			loadingGroup.start();
 		}
-
-		public function loadModule(moduleId:String, processor:MessageProcessor = null):ModuleLoaderTask
+		
+		public function isModuleLoaded(id:String):Boolean
 		{
-			// TODO check if module is currently loading -> if yes, dont load, but store processor then
+			return loadedModules[id] != null;
+		}
+		
+		public function loadModule(id:String, processor:MessageProcessor = null):ModuleLoaderTask
+		{
+			var task:DefaultModuleLoaderTask;
 			
-			var moduleUrl:String = moduleConfig.getInfoForId(moduleId).url;
+			if (!isModuleLoading(id))
+			{
+				addProcessorForLoadingModule(id, processor);
+				task = startModuleloading(id);	
+			}
+			else
+			{
+				addProcessorForLoadingModule(id, processor);
+			}
 			
-			var task:DefaultModuleLoaderTask = new DefaultModuleLoaderTask(moduleId, moduleUrl, processor);
+			return task;
+		}
+		
+		private function startModuleloading(id:String):DefaultModuleLoaderTask
+		{
+			var moduleUrl:String = moduleConfig.getInfoForId(id).url;
+
+			var task:DefaultModuleLoaderTask = new DefaultModuleLoaderTask(id, moduleUrl);
 			task.addEventListener(TaskEvent.COMPLETE, handleTaskComplete);
 			task.addEventListener(ErrorEvent.ERROR, handleTaskError);
 			loadingGroup.addTask(task);
 			
 			return task;
 		}
+
+		private function handleTaskError(event:ErrorEvent):void
+		{
+			var task:DefaultModuleLoaderTask = DefaultModuleLoaderTask(event.target);
+			cleanupTask(task);
+			
+			trace("Could not load module, for the following reason: " + event.text);
+		}
 		
 		private function handleTaskComplete(event:TaskEvent):void
 		{
 			var task:DefaultModuleLoaderTask = DefaultModuleLoaderTask(event.target);
 			
-			removeListeners(task);
 			initializeModule(task.moduleId, task.module);
-			proceedMessaged(task.processor);
+			proceedMessages(task.moduleId);
+			cleanupStoredMessageReferences(task.moduleId);
+			cleanupTask(task);
 		}
 
-		private function handleTaskError(event:ErrorEvent):void
+		private function initializeModule(id:String, module:Module):void
 		{
-			var task:DefaultModuleLoaderTask = DefaultModuleLoaderTask(event.target);
-			removeListeners(task);
-			
-			trace("Could not load module, for the following reason: " + event.text);
-		}
-
-		private function removeListeners(task:ModuleLoaderTask):void
-		{
-			task.removeEventListener(TaskEvent.COMPLETE, handleTaskComplete);
-			task.removeEventListener(ErrorEvent.ERROR, handleTaskError);
-		}
-
-		private function initializeModule(moduleId:String, module:Module):void
-		{
-			loadedModules[moduleId] = module;
+			loadedModules[id] = module;
 			module.initializeWithParentContext(context);
 		}
 		
-		private function proceedMessaged(processor:MessageProcessor):void
+		private function proceedMessages(id:String):void
+		{
+			var storedProcessors:Vector.<MessageProcessor> = Vector.<MessageProcessor>(processorsForLoadingModules[id]);
+			
+			for(var i:int = 0; i < storedProcessors.length; i++) 
+				proceedMessage(storedProcessors[i]);
+		}
+
+		private function proceedMessage(processor:MessageProcessor):void
 		{
 			if (processor == null)
 				return;
@@ -108,10 +133,44 @@ package de.mattesgroeger.parsley.modules.loading
 			processor.rewind();
 			processor.proceed();
 		}
-		
-		public function isModuleLoaded(id:String):Boolean
+
+		private function cleanupStoredMessageReferences(id:String):void
 		{
-			return loadedModules[id] != null;
+			var storedProcessors:Vector.<MessageProcessor> = Vector.<MessageProcessor>(processorsForLoadingModules[id]);
+			
+			while(storedProcessors.length > 0) 
+				storedProcessors.pop();
+			
+			delete processorsForLoadingModules[id];
+		}
+		
+		private function cleanupTask(task:ModuleLoaderTask):void
+		{
+			task.removeEventListener(TaskEvent.COMPLETE, handleTaskComplete);
+			task.removeEventListener(ErrorEvent.ERROR, handleTaskError);
+			loadingGroup.removeTask(Task(task));
+		}
+		
+		private function addProcessorForLoadingModule(id:String, processor:MessageProcessor):void
+		{
+			var storedProcessors:Vector.<MessageProcessor>;
+			
+			if (isModuleLoading(id))
+			{
+				storedProcessors = Vector.<MessageProcessor>(processorsForLoadingModules[id]);
+			}
+			else
+			{
+				storedProcessors = new Vector.<MessageProcessor>();
+				processorsForLoadingModules[id] = storedProcessors;
+			}
+				
+			storedProcessors.push(processor);
+		}
+
+		private function isModuleLoading(id:String):Boolean
+		{
+			return processorsForLoadingModules[id] != null;
 		}
 	}
 }
