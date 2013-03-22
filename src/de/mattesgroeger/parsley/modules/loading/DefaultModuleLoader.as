@@ -31,8 +31,6 @@ package de.mattesgroeger.parsley.modules.loading
 	import org.spicefactory.parsley.core.messaging.MessageProcessor;
 
 	import flash.events.ErrorEvent;
-	import flash.system.ApplicationDomain;
-	import flash.system.LoaderContext;
 	import flash.utils.Dictionary;
 
 	public class DefaultModuleLoader implements ModuleLoader
@@ -43,15 +41,11 @@ package de.mattesgroeger.parsley.modules.loading
 		[Inject]
 		public var moduleConfig:ModuleConfig;
 		
-		private var loaderContext:LoaderContext;
 		private var loadedModules:Dictionary = new Dictionary();
-		private var processorsForLoadingModules:Dictionary = new Dictionary();
 		private var loadingGroup:SequentialTaskGroup;
 
 		public function DefaultModuleLoader()
 		{
-			loaderContext = new LoaderContext(false, ApplicationDomain.currentDomain);
-			
 			loadingGroup = new SequentialTaskGroup();
 			loadingGroup.autoStart = true;
 			loadingGroup.ignoreChildErrors = true;
@@ -66,22 +60,35 @@ package de.mattesgroeger.parsley.modules.loading
 		
 		public function loadModule(id:String, processor:MessageProcessor = null):ModuleLoaderTask
 		{
-			var task:DefaultModuleLoaderTask;
+			var task : ModuleLoaderTask = getLoaderTaskForModuleId(id);
 			
-			if (!isModuleLoading(id))
-			{
-				addProcessorForLoadingModule(id, processor);
-				task = startModuleloading(id);	
-			}
-			else
-			{
-				addProcessorForLoadingModule(id, processor);
-			}
+			if (task == null)
+				task = startModuleLoading(id);	
+
+			task.addProcessorForLoadingModule(processor);
 			
 			return task;
 		}
 		
-		private function startModuleloading(id:String):DefaultModuleLoaderTask
+		private function getLoaderTaskForModuleId(moduleId:String):ModuleLoaderTask
+		{
+			var loaderTask:ModuleLoaderTask;
+			
+			for (var i:int = 0; i < loadingGroup.size; i++) 
+			{
+				if (loadingGroup.getTask(i) is ModuleLoaderTask)
+					loaderTask = ModuleLoaderTask(loadingGroup.getTask(i));
+					
+				if (loaderTask.moduleId == moduleId)
+					break;
+				else	
+					loaderTask = null;
+			}
+			
+			return loaderTask;
+		}
+		
+		private function startModuleLoading(id:String):DefaultModuleLoaderTask
 		{
 			var moduleUrl:String = moduleConfig.getInfoForId(id).url;
 
@@ -106,8 +113,7 @@ package de.mattesgroeger.parsley.modules.loading
 			var task:DefaultModuleLoaderTask = DefaultModuleLoaderTask(event.target);
 			
 			initializeModule(task.moduleId, task.module);
-			proceedMessages(task.moduleId);
-			cleanupStoredMessageReferences(task.moduleId);
+			proceedMessages(task);
 			cleanupTask(task);
 		}
 
@@ -117,12 +123,10 @@ package de.mattesgroeger.parsley.modules.loading
 			module.initializeWithParentContext(context);
 		}
 		
-		private function proceedMessages(id:String):void
+		private function proceedMessages( loaderTask : ModuleLoaderTask ) : void
 		{
-			var storedProcessors:Vector.<MessageProcessor> = Vector.<MessageProcessor>(processorsForLoadingModules[id]);
-			
-			for(var i:int = 0; i < storedProcessors.length; i++) 
-				proceedMessage(storedProcessors[i]);
+			for(var i:int = 0; i < loaderTask.processorCount; i++) 
+				proceedMessage(loaderTask.getProcessorAtIndex(i));
 		}
 
 		private function proceedMessage(processor:MessageProcessor):void
@@ -134,43 +138,16 @@ package de.mattesgroeger.parsley.modules.loading
 			processor.proceed();
 		}
 
-		private function cleanupStoredMessageReferences(id:String):void
-		{
-			var storedProcessors:Vector.<MessageProcessor> = Vector.<MessageProcessor>(processorsForLoadingModules[id]);
-			
-			while(storedProcessors.length > 0) 
-				storedProcessors.pop();
-			
-			delete processorsForLoadingModules[id];
-		}
 		
 		private function cleanupTask(task:ModuleLoaderTask):void
 		{
 			task.removeEventListener(TaskEvent.COMPLETE, handleTaskComplete);
 			task.removeEventListener(ErrorEvent.ERROR, handleTaskError);
-			loadingGroup.removeTask(Task(task));
-		}
-		
-		private function addProcessorForLoadingModule(id:String, processor:MessageProcessor):void
-		{
-			var storedProcessors:Vector.<MessageProcessor>;
 			
-			if (isModuleLoading(id))
-			{
-				storedProcessors = Vector.<MessageProcessor>(processorsForLoadingModules[id]);
-			}
-			else
-			{
-				storedProcessors = new Vector.<MessageProcessor>();
-				processorsForLoadingModules[id] = storedProcessors;
-			}
-				
-			storedProcessors.push(processor);
-		}
-
-		private function isModuleLoading(id:String):Boolean
-		{
-			return processorsForLoadingModules[id] != null;
+			while (task.processorCount > 0) 
+				task.removeProcessorAtIndex(0);
+			
+			loadingGroup.removeTask(Task(task));
 		}
 	}
 }

@@ -21,18 +21,14 @@
  */
 package de.mattesgroeger.parsley.modules.loading
 {
+	import de.mattesgroeger.parsley.modules.loading.support.MockMessageProcessor;
 	import de.mattesgroeger.parsley.modules.loading.support.ModuleIds;
 
 	import org.flexunit.asserts.assertEquals;
-	import org.flexunit.asserts.assertNotNull;
 	import org.flexunit.asserts.assertNull;
-	import org.flexunit.async.Async;
-	import org.spicefactory.lib.task.events.TaskEvent;
-
-	import flash.events.ErrorEvent;
 
 	public class DefaultModuleLoaderTaskTest
-	{
+	{	
 		[Test]
 		public function task_creation():void
 		{
@@ -43,36 +39,72 @@ package de.mattesgroeger.parsley.modules.loading
 
 			assertEquals(moduleId, task.moduleId);
 			assertNull(task.module);
+			assertEquals("unexpected number of message processors", 0, task.processorCount);
 		}
-
-		[Test(async)]
-		public function module_loading():void
+		
+		[Test]
+		public function test_add_and_get_message_processor() : void
 		{
-			var moduleLoadingTask:ModuleLoaderTask = new DefaultModuleLoaderTask(ModuleIds.DEMO_MODULE_ID, "DemoModule.swf");
-			moduleLoadingTask.addEventListener(TaskEvent.COMPLETE, Async.asyncHandler(this, handleModuleLoaded, 1000));
+			var task:DefaultModuleLoaderTask = new DefaultModuleLoaderTask(ModuleIds.DEMO_MODULE_ID, "DemoModule.swf");
+			var messageProcessor : MockMessageProcessor = new MockMessageProcessor();
+			
+			task.addProcessorForLoadingModule(messageProcessor);
+			
+			assertEquals("unexpected message processor", messageProcessor, task.getProcessorAtIndex(0));
 		}
-
-		private function handleModuleLoaded(event:TaskEvent, ...args):void
+		
+		[Test]
+		public function test_remove_message_processor() : void
 		{
-			var task:ModuleLoaderTask = ModuleLoaderTask(event.target);
-
-			assertEquals(ModuleIds.DEMO_MODULE_ID, task.moduleId);
-			assertNotNull(task.module);
+			var task:DefaultModuleLoaderTask = new DefaultModuleLoaderTask(ModuleIds.DEMO_MODULE_ID, "DemoModule.swf");
+			var messageProcessor : MockMessageProcessor = new MockMessageProcessor();
+			
+			task.addProcessorForLoadingModule(messageProcessor);
+			task.removeProcessorAtIndex(0);
+			
+			assertEquals("unexpected number of message processors", 0, task.processorCount);
 		}
 
-		[Test(async)]
-		public function module_loading_fails():void
-		{
-			var moduleLoadingTask:ModuleLoaderTask = new DefaultModuleLoaderTask(ModuleIds.NO_MODULE_ID, "NoModule.swf");
-			moduleLoadingTask.addEventListener(ErrorEvent.ERROR, Async.asyncHandler(this, handleModuleLoadedError, 1000));
-		}
-
-		private function handleModuleLoadedError(event:ErrorEvent, ...args):void
-		{
-			var task:ModuleLoaderTask = ModuleLoaderTask(event.target);
-
-			assertEquals(ModuleIds.NO_MODULE_ID, task.moduleId);
-			assertNull(task.module);
-		}
+//		[Test(async)]
+//		public function module_loading():void
+//		{
+//			var loadingGroup : SequentialTaskGroup = new SequentialTaskGroup();
+//			loadingGroup.autoStart = true;
+//			loadingGroup.ignoreChildErrors = true;
+//			
+//			var task:DefaultModuleLoaderTask = new DefaultModuleLoaderTask(ModuleIds.DEMO_MODULE_ID, "DemoModule.swf");
+//			task.addEventListener(TaskEvent.COMPLETE, Async.asyncHandler(this, handleModuleLoaded, 1000), false, 0, true);
+//
+//			loadingGroup.addTask( task );
+//		}
+//
+//		private function handleModuleLoaded(event:TaskEvent, ...args):void
+//		{
+//			var task:ModuleLoaderTask = ModuleLoaderTask(event.target);
+//
+//			assertEquals(ModuleIds.DEMO_MODULE_ID, task.moduleId);
+//			assertNotNull(task.module);
+//		}
+//
+//		[Test(async)]
+//		public function module_loading_fails():void
+//		{
+//			var loadingGroup : SequentialTaskGroup = new SequentialTaskGroup();
+//			loadingGroup.autoStart = true;
+//			loadingGroup.ignoreChildErrors = true;
+//			
+//			var task:DefaultModuleLoaderTask = new DefaultModuleLoaderTask(ModuleIds.NO_MODULE_ID, "NoModule.swf");
+//			task.addEventListener(ErrorEvent.ERROR, Async.asyncHandler(this, handleModuleLoadedError, 1000), false, 0, true);
+//			
+//			loadingGroup.addTask( task );
+//		}
+//
+//		private function handleModuleLoadedError(event:ErrorEvent, ...args):void
+//		{
+//			var task:ModuleLoaderTask = ModuleLoaderTask(event.target);
+//
+//			assertEquals(ModuleIds.NO_MODULE_ID, task.moduleId);
+//			assertNull(task.module);
+//		}
 	}
 }
