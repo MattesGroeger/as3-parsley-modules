@@ -25,7 +25,7 @@ package de.mattesgroeger.parsley.modules.loading
 
 	import flash.events.IEventDispatcher;
 	
-	public interface ModuleLoaderTask extends IEventDispatcher
+	public interface ModuleLoaderTask extends MessageProcessorStorage, IEventDispatcher
 	{
 		function get moduleId():String;
 
