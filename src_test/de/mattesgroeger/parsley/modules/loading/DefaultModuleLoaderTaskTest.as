@@ -64,47 +64,5 @@ package de.mattesgroeger.parsley.modules.loading
 			
 			assertEquals("unexpected number of message processors", 0, task.processorCount);
 		}
-
-//		[Test(async)]
-//		public function module_loading():void
-//		{
-//			var loadingGroup : SequentialTaskGroup = new SequentialTaskGroup();
-//			loadingGroup.autoStart = true;
-//			loadingGroup.ignoreChildErrors = true;
-//			
-//			var task:DefaultModuleLoaderTask = new DefaultModuleLoaderTask(ModuleIds.DEMO_MODULE_ID, "DemoModule.swf");
-//			task.addEventListener(TaskEvent.COMPLETE, Async.asyncHandler(this, handleModuleLoaded, 1000), false, 0, true);
-//
-//			loadingGroup.addTask( task );
-//		}
-//
-//		private function handleModuleLoaded(event:TaskEvent, ...args):void
-//		{
-//			var task:ModuleLoaderTask = ModuleLoaderTask(event.target);
-//
-//			assertEquals(ModuleIds.DEMO_MODULE_ID, task.moduleId);
-//			assertNotNull(task.module);
-//		}
-//
-//		[Test(async)]
-//		public function module_loading_fails():void
-//		{
-//			var loadingGroup : SequentialTaskGroup = new SequentialTaskGroup();
-//			loadingGroup.autoStart = true;
-//			loadingGroup.ignoreChildErrors = true;
-//			
-//			var task:DefaultModuleLoaderTask = new DefaultModuleLoaderTask(ModuleIds.NO_MODULE_ID, "NoModule.swf");
-//			task.addEventListener(ErrorEvent.ERROR, Async.asyncHandler(this, handleModuleLoadedError, 1000), false, 0, true);
-//			
-//			loadingGroup.addTask( task );
-//		}
-//
-//		private function handleModuleLoadedError(event:ErrorEvent, ...args):void
-//		{
-//			var task:ModuleLoaderTask = ModuleLoaderTask(event.target);
-//
-//			assertEquals(ModuleIds.NO_MODULE_ID, task.moduleId);
-//			assertNull(task.module);
-//		}
 	}
 }
