@@ -24,6 +24,7 @@ package de.mattesgroeger.parsley.modules.loading
 	import de.mattesgroeger.parsley.modules.Module;
 
 	import org.spicefactory.lib.task.ResultTask;
+	import org.spicefactory.parsley.core.messaging.MessageProcessor;
 
 	import flash.display.Loader;
 	import flash.display.LoaderInfo;
@@ -42,11 +43,13 @@ package de.mattesgroeger.parsley.modules.loading
 		private var _module:Module;
 
 		private var loader:Loader;
+		private var processors : Vector.<MessageProcessor> = new Vector.<MessageProcessor>();
 
 		public function DefaultModuleLoaderTask(moduleId:String, moduleUrl:String)
 		{
 			_moduleId = moduleId;
 			_moduleUrl = moduleUrl;
+			processors = new Vector.<MessageProcessor>();
 		}
 
 		public function get moduleId():String
@@ -57,6 +60,26 @@ package de.mattesgroeger.parsley.modules.loading
 		public function get module():Module
 		{
 			return _module;
+		}
+		
+		public function get processorCount() : uint
+		{
+			return processors.length;
+		}
+		
+		public function getProcessorAtIndex( index : int ) : MessageProcessor
+		{
+			return processors[index];
+		}
+		
+		public function removeProcessorAtIndex( index : int ) : void
+		{
+			processors.splice( index, 1 );
+		}
+	
+		public function addProcessorForLoadingModule( processor : MessageProcessor ) : void
+		{
+			processors.push( processor );
 		}
 
 		protected override function doStart():void

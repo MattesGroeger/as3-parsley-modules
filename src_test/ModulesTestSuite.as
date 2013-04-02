@@ -21,6 +21,7 @@
  */
 package
 {
+	import de.mattesgroeger.parsley.modules.loading.DefaultModuleLoaderTaskTest;
 	import de.mattesgroeger.parsley.modules.config.ModuleConfigTest;
 	import de.mattesgroeger.parsley.modules.loading.DefaultModuleLoaderTest;
 	
@@ -30,5 +31,6 @@ package
 	{
 		public var moduleConfigTest:ModuleConfigTest;
 		public var defaultModuleLoaderTest:DefaultModuleLoaderTest;
+		public var defaultModuleLoaderTaskTest:DefaultModuleLoaderTaskTest;
 	}
 }
